@@ -9,7 +9,7 @@ const getApiUrl = () => {
   
   // Production fallback - thay bằng URL server của bạn
   if (import.meta.env.PROD) {
-    return "https://your-server-name.onrender.com/api";
+    return "https://vietprompt-server.onrender.com/api";
   }
   
   // Development fallback

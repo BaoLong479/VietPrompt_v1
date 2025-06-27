@@ -16,7 +16,7 @@ const corsOptions = {
   origin: [
     'http://localhost:5173',
     'http://localhost:3000',
-    'https://your-client-app-name.onrender.com', // Thay bằng URL client của bạn
+    'https://vietprompt.onrender.com', // Thay bằng URL client của bạn
     'https://viet-prompt-v1.vercel.app' // URL từ GitHub
   ],
   credentials: true,
