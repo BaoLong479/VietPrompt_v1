@@ -1,8 +1,23 @@
 import axios from "axios";
 import { useAuthStore } from "../store/authStore";
 
+// Get API URL from environment or use production URL
+const getApiUrl = () => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  
+  // Production fallback - thay bằng URL server của bạn
+  if (import.meta.env.PROD) {
+    return "https://your-server-name.onrender.com/api";
+  }
+  
+  // Development fallback
+  return "http://localhost:3000/api";
+};
+
 const http = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:3000/api",
+  baseURL: getApiUrl(),
   headers: {
     "Content-Type": "application/json",
   },
