@@ -8,12 +8,19 @@ import { Navigation, Pagination, Scrollbar, A11y } from "swiper/modules";
 import { Swiper, SwiperSlide } from "swiper/react";
 import usePayment from "../../hooks/usePayment";
 
+import 'swiper/css';
+import 'swiper/css/navigation';
+import 'swiper/css/pagination';
+import 'swiper/css/scrollbar';
+
 const PackageDetails = () => {
   const user = useAuthStore((state) => state.user);
   const { id } = useParams();
   const [packageDetail, setPackageDetail] = useState(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const { handleCreatePayment } = usePayment();
+
+  const [isPaymentModalOpen, setPaymentModalOpen] = useState(false);
 
   // Comment states
   const [comments, setComments] = useState([]);
@@ -24,6 +31,26 @@ const PackageDetails = () => {
   const [commentTotalPages, setCommentTotalPages] = useState(1);
   const [commentTotal, setCommentTotal] = useState(0);
   const commentLimit = 5;
+
+  useEffect(() => {
+    const fetchPackage = async () => {
+      // Reset state trước khi fetch để đảm bảo Swiper cũ bị hủy nếu có
+      setPackageDetail(null); 
+      try {
+        const response = await http.get(`/package/detail/${id}`);
+        if (response.status === 200) {
+          setPackageDetail(response.data.metadata.package);
+        } else {
+          toast.error(response.data.message || "Lỗi khi lấy thông tin gói dịch vụ");
+        }
+      } catch (error) {
+        toast.error(error.response?.data?.message || "Lỗi khi lấy thông tin gói dịch vụ");
+      }
+    };
+    if (id) {
+        fetchPackage();
+    }
+  }, [id]);
 
   const handleFavorite = async () => {
     try {
@@ -158,6 +185,36 @@ const PackageDetails = () => {
     }
   };
 
+  const PaymentMethodModal = ({ isOpen, onClose, onSelectMethod, price, packageId }) => {
+    if (!isOpen) return null;
+  
+    return (
+      <div className="modal-overlay" onClick={onClose}>
+        <div className="modal-content text-white" onClick={(e) => e.stopPropagation()}>
+          <h4 className="mb-4">Chọn phương thức thanh toán</h4>
+          <div className="d-grid gap-3">
+            <button className="btn btn-primary btn-lg" onClick={() => onSelectMethod('vnpay')}>
+              Thanh toán qua VNPay
+            </button>
+            <button className="btn btn-info btn-lg" onClick={() => onSelectMethod('payos')}>
+              Thanh toán qua PayOS (QR, Thẻ nội địa/quốc tế)
+            </button>
+          </div>
+          <button className="btn btn-secondary mt-4" onClick={onClose}>Hủy</button>
+        </div>
+      </div>
+    );
+  };
+
+  // --- START: Hàm xử lý khi chọn phương thức thanh toán ---
+  const handleSelectPaymentMethod = (method) => {
+    if (packageDetail) {
+      handleCreatePayment(packageDetail.price, packageDetail._id, method);
+      setPaymentModalOpen(false); // Đóng modal sau khi gọi API
+    }
+  };
+  // --- END: Hàm xử lý khi chọn phương thức thanh toán ---
+
   return (
     <section className="detail-prompt-section p-5">
       <div className="container-fluid">
@@ -184,38 +241,54 @@ const PackageDetails = () => {
           </div>
           <div className="row g-3 mb-4">
             <div className="col-lg-8">
-              <Swiper
-                // install Swiper modules
-                modules={[Navigation, Pagination, Scrollbar, A11y]}
-                spaceBetween={0}
-                slidesPerView={1}
-                loop={true}
-                navigation
-                pagination={{ clickable: true }}
-                scrollbar={{ draggable: true }}
-              >
-                {packageDetail?.images?.map((image, index) => (
-                  <SwiperSlide
-                    key={index}
-                    style={{
-                      width: "100%",
-                      position: "relative",
-                      aspectRatio: "16/9",
-                    }}
-                  >
-                    <img
-                      src={image.url}
+            {packageDetail && packageDetail.images && packageDetail.images.length > 0 ? (
+                <Swiper
+                  key={id} 
+                  observer={true}
+                  observeParents={true}
+                  modules={[Navigation, Pagination, Scrollbar, A11y]}
+                  spaceBetween={0}
+                  slidesPerView={1}
+                  loop={true}
+                  navigation={true}
+                  pagination={{ clickable: true }}
+                  scrollbar={{ draggable: true }}
+                >
+                  {packageDetail.images.map((image, index) => (
+                    <SwiperSlide
                       key={index}
-                      alt={packageDetail?.name}
                       style={{
-                        objectFit: "cover",
                         width: "100%",
-                        height: "100%",
+                        position: "relative",
+                        aspectRatio: "16/9",
                       }}
-                    />
-                  </SwiperSlide>
-                ))}
-              </Swiper>
+                    >
+                      <img
+                        src={image.url}
+                        alt={`${packageDetail.name} - ${index + 1}`}
+                        style={{
+                          objectFit: "cover",
+                          width: "100%",
+                          height: "100%",
+                        }}
+                        onLoad={(e) => e.target.closest('.swiper')?.swiper.update()}
+                      />
+                    </SwiperSlide>
+                  ))}
+                </Swiper>
+              ) : (
+                <div style={{ 
+                    width: "100%", 
+                    aspectRatio: "16/9", 
+                    backgroundColor: "#333",
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'white'
+                }}>
+                  ...
+                </div>
+              )}
             </div>
             <div className="col-lg-4">
               <div className="artist-info-block text-white h-100">
@@ -259,12 +332,7 @@ const PackageDetails = () => {
                     {user._id !== packageDetail?.user?._id && (
                       <button
                         className="btn btn-create-prompt mb-3"
-                        onClick={() =>
-                          handleCreatePayment(
-                            packageDetail?.price,
-                            packageDetail?._id
-                          )
-                        }
+                        onClick={() => setPaymentModalOpen(true)}
                       >
                         Mua
                       </button>
@@ -502,6 +570,13 @@ const PackageDetails = () => {
           )}
         </div>
       </div>
+       {/* --- START: Render Modal --- */}
+       <PaymentMethodModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setPaymentModalOpen(false)}
+        onSelectMethod={handleSelectPaymentMethod}
+      />
+      {/* --- END: Render Modal --- */}
     </section>
   );
 };
